@@ -149,7 +149,7 @@ def main(unused_argv):
         logging.getLogger().addHandler(file_handler)
 
         # Save a record of flags as a .json file in train_dir
-        with open(os.path.join(FLAGS.train_dir, "flags.json"), 'w') as fout:
+        with open(os.path.join(FLAGS.train_dir, "flags.json"), 'wb') as fout:
             json.dump(FLAGS.__flags, fout)
 
         # Make bestmodel dir if necessary
