@@ -1,2 +1,3 @@
 /data/*
-*.pyc
+/code/*.pyc
+/code/preprocessing/*.pyc
