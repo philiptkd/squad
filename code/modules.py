@@ -114,6 +114,63 @@ class SimpleSoftmaxLayer(object):
 
             return masked_logits, prob_dist
 
+class BiDAF(object):
+    def __init__(self, keep_prob, key_vec_size, value_vec_size):
+        self.keep_prob = keep_prob
+        self.key_vec_size = key_vec_size
+        self.value_vec_size = value_vec_size
+
+        """Inputs:
+          values: Tensor shape (batch_size, num_values, value_vec_size).
+          values_mask: Tensor shape (batch_size, num_values).
+            1s where there's real input, 0s where there's padding
+          keys: Tensor shape (batch_size, num_keys, value_vec_size)"""
+    def build_graph(self, values, values_mask, keys):
+        with vs.variable_scope("BiDAF"):
+            batch_size = tf.shape(values)[0]
+            num_values = tf.shape(values)[1]
+            num_keys = tf.shape(keys)[1]
+            
+            # give both shape (batch_size, num_values, num_keys, value_vec_size)
+            repeated_values = tf.tile(tf.expand_dims(values, 2), [1, 1, num_keys, 1]) 
+            repeated_keys = tf.tile(tf.expand_dims(keys, 1), [1, num_values, 1, 1])
+
+            # unweighted similarity matrix. shape (batch_size, num_values, num_keys, 3*value_vec_size)
+            unweighted = tf.concat([repeated_values, repeated_keys, repeated_values*repeated_keys], axis=3)
+            
+            # get weights of shape (batch_size, num_values, 3*value_vec_size, 1)
+            weights = tf.get_variable("weights", [1, 1, 3*self.value_vec_size, 1], tf.float32)
+            weights = tf.tile(weights, [batch_size, num_values, 1, 1])
+
+
+            # multiply to get similarity matrix logits. shape (batch_size, num_values, num_keys)
+            attn_logits = tf.squeeze(tf.matmul(unweighted, weights), -1)
+
+            # get values mask for logits
+            attn_logits_mask = tf.reshape(values_mask, [batch_size, num_values, 1])
+
+            # apply mask and softmax. shape (batch_size, num_values, num_keys)
+            _, attn_dist_c2q = masked_softmax(attn_logits, attn_logits_mask, 2)
+
+            # Use attention distribution to take weighted sum of values
+            a_c2q = tf.matmul(tf.transpose(attn_dist_c2q, perm=[0,2,1]), values) # shape (batch_size, num_keys, value_vec_size)
+
+            # mask before getting max so padding doesn't affect reduction. shape (batch_size, num_keys)
+            max_per_row = tf.reduce_max(attn_logits*tf.cast(attn_logits_mask, 'float'), 1)
+            
+            # since padding was already masked, none will be left after reduce_max. can do regular softmax. shape (batch_size, num_keys)
+            beta = tf.nn.softmax(max_per_row, dim=-1)
+            a_q2c = tf.matmul(tf.expand_dims(beta, 1), keys)    # shape (batch_size, 1, value_vec_size)
+            a_q2c = tf.tile(a_q2c, [1, num_keys, 1])    # to make it the same shape as a_c2q: (batch_size, num_keys, value_vec_size)
+            
+
+            # Apply dropout
+            a_c2q = tf.nn.dropout(a_c2q, self.keep_prob)
+            a_q2c = tf.nn.dropout(a_q2c, self.keep_prob)
+
+            return a_c2q, a_q2c
+
+
 
 class BasicAttn(object):
     """Module for basic attention.
