@@ -1,2 +1,2 @@
-events.* filter=lfs diff=lfs merge=lfs -text
-qa*.meta filter=lfs diff=lfs merge=lfs -text
+*events* filter=lfs diff=lfs merge=lfs -text
+*.meta filter=lfs diff=lfs merge=lfs -text

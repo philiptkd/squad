@@ -215,7 +215,7 @@ class CoAttn(object):
             L = tf.matmul(c, tf.transpose(q_prime, perm=[0,2,1])) # shape (batch_size, num_keys + 1, num_values + 1)
             
             # create mask for affinity matrix
-            L_mask = tf.concat([values_mask, tf.constant(1, [batch_size, 1])], 1) # shape (batch_size, num_values + 1)
+            L_mask = tf.concat([values_mask, tf.constant(1, shape=[batch_size, 1])], 1) # shape (batch_size, num_values + 1)
             L_mask = tf.expand_dims(L_mask, axis=1) # shape (batch_size, 1, num_values + 1)
 
             # get c2q attention (for a given context word, how similar is each question word)
@@ -232,7 +232,7 @@ class CoAttn(object):
             # biLSTM
             LSTM_encoder = RNNEncoder(2*self.value_vec_size, self.keep_prob, "LSTM")
             LSTM_input = tf.concat([s,a], axis=-1) # shape (batch_size, num_keys+1, 2*value_vec_size)
-            LSTM_mask = tf.constant(1, [batch_size, num_keys+1])
+            LSTM_mask = tf.constant(1, shape=[batch_size, num_keys+1])
             u = LSTM_encoder.build_graph(LSTM_input, LSTM_mask) # shape (batch_size, num_keys+1, 4*value_vec_size)
             
             # dropout is applied within the LSTM
