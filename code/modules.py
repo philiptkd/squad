@@ -241,7 +241,6 @@ class CoAttn(object):
 
 
 
-
 class BasicAttn(object):
     """Module for basic attention.
 
