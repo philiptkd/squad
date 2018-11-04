@@ -52,8 +52,8 @@ class RNNEncoder(object):
             self.rnn_cell_fw = rnn_cell.BasicLSTMCell(self.hidden_size)
             self.rnn_cell_bw = rnn_cell.BasicLSTMCell(self.hidden_size)
 
-        self.rnn_cell_bw = DropoutWrapper(self.rnn_cell_bw, input_keep_prob=self.keep_prob)
         self.rnn_cell_fw = DropoutWrapper(self.rnn_cell_fw, input_keep_prob=self.keep_prob)
+        self.rnn_cell_bw = DropoutWrapper(self.rnn_cell_bw, input_keep_prob=self.keep_prob)
 
     def build_graph(self, inputs, masks):
         """
@@ -203,8 +203,11 @@ class CoAttn(object):
             q_prime = tf.contrib.layers.fully_connected(values, num_outputs=self.value_vec_size, activation_fn=tf.tanh)
         
             # create sentinels c0 and q0
-            c0 = tf.get_variable("c0_sentinel", [batch_size, 1, value_vec_size], dtype=tf.float32)
-            q0 = tf.get_variable("q0_sentinel", [batch_size, 1, value_vec_size], dtype=tf.float32)
+            c0 = tf.get_variable("c0_sentinel", [1, 1, value_vec_size], dtype=tf.float32)
+            q0 = tf.get_variable("q0_sentinel", [1, 1, value_vec_size], dtype=tf.float32)
+            c0 = tf.tile(c0, [batch_size, 1, 1]) # to share weights between examples in the batch
+            q0 = tf.tile(q0, [batch_size, 1, 1])
+
             c = tf.concat([keys, c0], axis=1) # shape (batch_size, num_keys + 1, value_vec_size)
             q_prime = tf.concat([q_prime, q0], axis=1) # shape (batch_size, num_values + 1, value_vec_size)
 
@@ -231,6 +234,8 @@ class CoAttn(object):
             LSTM_input = tf.concat([s,a], axis=-1) # shape (batch_size, num_keys+1, 2*value_vec_size)
             LSTM_mask = tf.constant(1, [batch_size, num_keys+1])
             u = LSTM_encoder.build_graph(LSTM_input, LSTM_mask) # shape (batch_size, num_keys+1, 4*value_vec_size)
+            
+            # dropout is applied within the LSTM
 
             return u
 
