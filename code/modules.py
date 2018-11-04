@@ -189,11 +189,6 @@ class CoAttn(object):
         self.value_vec_size = value_vec_size
 
     def build_graph(self, values, values_mask, keys):
-       """ Inputs:
-          values: Tensor shape (batch_size, num_values, value_vec_size).
-          values_mask: Tensor shape (batch_size, num_values).
-            1s where there's real input, 0s where there's padding
-          keys: Tensor shape (batch_size, num_keys, value_vec_size)"""
         with vs.variable_scope("CoAttn"):
             batch_size = tf.shape(values)[0]
             num_values = tf.shape(values)[1]
@@ -203,8 +198,8 @@ class CoAttn(object):
             q_prime = tf.contrib.layers.fully_connected(values, num_outputs=self.value_vec_size, activation_fn=tf.tanh)
         
             # create sentinels c0 and q0
-            c0 = tf.get_variable("c0_sentinel", [1, 1, value_vec_size], dtype=tf.float32)
-            q0 = tf.get_variable("q0_sentinel", [1, 1, value_vec_size], dtype=tf.float32)
+            c0 = tf.get_variable("c0_sentinel", [1, 1, self.value_vec_size], dtype=tf.float32)
+            q0 = tf.get_variable("q0_sentinel", [1, 1, self.value_vec_size], dtype=tf.float32)
             c0 = tf.tile(c0, [batch_size, 1, 1]) # to share weights between examples in the batch
             q0 = tf.tile(q0, [batch_size, 1, 1])
 
@@ -215,15 +210,17 @@ class CoAttn(object):
             L = tf.matmul(c, tf.transpose(q_prime, perm=[0,2,1])) # shape (batch_size, num_keys + 1, num_values + 1)
             
             # create mask for affinity matrix
-            L_mask = tf.concat([values_mask, tf.constant(1, shape=[batch_size, 1])], 1) # shape (batch_size, num_values + 1)
+            L_mask = tf.fill([batch_size, 1], 1) # creates tensor of 1s with shape (batch_size, 1)
+            L_mask = tf.concat([values_mask, L_mask], 1) # shape (batch_size, num_values + 1)
             L_mask = tf.expand_dims(L_mask, axis=1) # shape (batch_size, 1, num_values + 1)
 
+
             # get c2q attention (for a given context word, how similar is each question word)
-            alpha = masked_softmax(L, L_mask, -1) # shape (batch_size, num_keys+1, num_values+1)
+            _, alpha = masked_softmax(L, L_mask, -1) # shape (batch_size, num_keys+1, num_values+1)
             a = tf.matmul(alpha, q_prime) # shape (batch_size, num_keys+1, value_vec_size)
 
             # get q2c attention (for a given question word, how similar is each context word)
-            beta = masked_softmax(L, L_mask, -2) # shape(batch_size, num_keys+1, num_values+1)
+            _, beta = masked_softmax(L, L_mask, 1) # shape(batch_size, num_keys+1, num_values+1)
             b =  tf.matmul(tf.transpose(beta, perm=[0,2,1]), c) # shape (batch_size, num_values+1, value_vec_size)
 
             # second-level attention
@@ -232,8 +229,9 @@ class CoAttn(object):
             # biLSTM
             LSTM_encoder = RNNEncoder(2*self.value_vec_size, self.keep_prob, "LSTM")
             LSTM_input = tf.concat([s,a], axis=-1) # shape (batch_size, num_keys+1, 2*value_vec_size)
-            LSTM_mask = tf.constant(1, shape=[batch_size, num_keys+1])
-            u = LSTM_encoder.build_graph(LSTM_input, LSTM_mask) # shape (batch_size, num_keys+1, 4*value_vec_size)
+            LSTM_input = LSTM_input[:,:-1,:] # remove sentinels. shape (batch_size, num_keys, 2*value_vec_size)
+            LSTM_mask = tf.fill([batch_size, num_keys], 1)
+            u = LSTM_encoder.build_graph(LSTM_input, LSTM_mask) # shape (batch_size, num_keys, 4*value_vec_size)
             
             # dropout is applied within the LSTM
 

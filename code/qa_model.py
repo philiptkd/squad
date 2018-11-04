@@ -136,7 +136,7 @@ class QAModel(object):
 
         # implement bidirectional attention flow
         attn_layer = CoAttn(self.keep_prob, self.FLAGS.hidden_size*2, self.FLAGS.hidden_size*2)
-        u = attn_layer.build_graph(question_hiddens, self.qn_mask, context_hiddens) # shape (batch_size, context_len+1, 8*hidden_size)
+        u = attn_layer.build_graph(question_hiddens, self.qn_mask, context_hiddens) # shape (batch_size, context_len, 8*hidden_size)
 
         # Apply fully connected layer to each blended representation
         # Note, blended_reps_final corresponds to b' in the handout
