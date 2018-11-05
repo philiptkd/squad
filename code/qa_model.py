@@ -138,7 +138,10 @@ class QAModel(object):
         _, attn_output = attn_layer.build_graph(question_hiddens, self.qn_mask, context_hiddens) # attn_output is shape (batch_size, context_len, hidden_size*2)
 
         blended_reps = tf.concat([context_hiddens, attn_output], axis=2) # (batch_size, context_len, hidden_size*4)
-       
+        
+        #TODO: introduce this and adjust input size of next layer if there is still not enough memory
+        #down_sampled = tf.contrib.layers.fully_connected(blended_reps, num_outputs=self.FLAGS.hidden_size)
+
         self_attn_layer = SelfAttn(self.keep_prob, self.FLAGS.batch_size, self.FLAGS.context_len, self.FLAGS.hidden_size*4)
         self_attn_output = self_attn_layer.build_graph(blended_reps) # shape (batch_size, context_len, hidden_size*2)
 

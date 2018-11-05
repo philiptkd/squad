@@ -47,9 +47,9 @@ tf.app.flags.DEFINE_integer("num_epochs", 0, "Number of epochs to train. 0 means
 tf.app.flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 tf.app.flags.DEFINE_float("max_gradient_norm", 5.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("dropout", 0.15, "Fraction of units randomly dropped on non-recurrent connections.")
-tf.app.flags.DEFINE_integer("batch_size", 100, "Batch size to use")
-tf.app.flags.DEFINE_integer("hidden_size", 200, "Size of the hidden states")
-tf.app.flags.DEFINE_integer("context_len", 600, "The maximum context length of your model")
+tf.app.flags.DEFINE_integer("batch_size", 40, "Batch size to use")
+tf.app.flags.DEFINE_integer("hidden_size", 75, "Size of the hidden states")
+tf.app.flags.DEFINE_integer("context_len", 300, "The maximum context length of your model")
 tf.app.flags.DEFINE_integer("question_len", 30, "The maximum question length of your model")
 tf.app.flags.DEFINE_integer("embedding_size", 100, "Size of the pretrained word vectors. This needs to be one of the available GloVe dimensions: 50/100/200/300")
 
@@ -134,6 +134,16 @@ def main(unused_argv):
 
     # Initialize model
     qa_model = QAModel(FLAGS, id2word, word2id, emb_matrix)
+
+
+    #TESTING TODO: REMOVE THIS
+    coll = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+    for item in coll:
+        print(item)
+
+    return
+    #END TESTING
+
 
     # Some GPU settings
     config=tf.ConfigProto()
