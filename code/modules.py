@@ -283,9 +283,9 @@ class SelfAttn(object):
 
             gate = tf.sigmoid(tf.matmul(attn_enc, Wg)) # shape (batch_size, N, 2*enc_size)
             GRU_input = gate*attn_enc # shape (batch_size, N, 2*enc_size)
-            GRU_encoder = RNNEncoder(2*self.enc_size, self.keep_prob, "GRU")      # TODO: make this hidden size smaller if the model is too big
+            GRU_encoder = RNNEncoder(self.enc_size//2, self.keep_prob, "GRU")
             GRU_mask = tf.fill([self.B, self.N], 1) # shape (batch_size, N)
-            h = GRU_encoder.build_graph(GRU_input, GRU_mask) # shape (batch_size, N, 4*enc_size)
+            h = GRU_encoder.build_graph(GRU_input, GRU_mask) # shape (batch_size, N, enc_size)
 
             # dropout is applied within the GRU
             
