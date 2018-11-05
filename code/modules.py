@@ -143,7 +143,15 @@ class BiDAF(object):
 
             # unweighted similarity matrix. shape (batch_size, num_values, num_keys, 3*value_vec_size)
             unweighted = tf.concat([repeated_values, repeated_keys, repeated_values*repeated_keys], axis=3)
+           
             
+            #TODO: check if initialization of weights below is what caused this model to perform only as well as the baseline
+            # unfortunately, this will only make it slower. try to get a batch size greater than 30. only eval infrequently
+            # alternative (to have unique weights for every c,q pair?):
+            #   weights = tf.get_variable("weights", [1, num_values, 3*self.value_vec_size, 1], tf.float32)
+            #   weights = tf.tile(weights, [batch_size, 1, 1, 1])
+
+
             # get weights of shape (batch_size, num_values, 3*value_vec_size, 1)
             weights = tf.get_variable("weights", [1, 1, 3*self.value_vec_size, 1], tf.float32)
             weights = tf.tile(weights, [batch_size, num_values, 1, 1])
@@ -237,6 +245,52 @@ class CoAttn(object):
 
             return u
 
+class SelfAttn(object):
+    def __init__(self, keep_prob):
+        self.keep_prob = keep_prob
+
+    def build_graph(self, in_encodings):    # in_encodings shape is (batch_size, N, enc_size)
+        with vs.variable_scope("SelfAttn"):
+            N = tf.shape(in_encodings)[1]
+            batch_size = tf.shape(in_encodings)[0]
+            enc_size = tf.shape(in_encodings)[2]
+
+            # tile along different axes and then concatenate to get every possible combination of elements of original tensor
+            # has the unfortunate downside of requiring a lot of memory
+            u1 = tf.tile(tf.expand_dims(in_encodings, 1), [1, N, 1, 1]) # shape (batch_size, N, N, enc_size)
+            u2 = tf.tile(tf.expand_dims(in_encodings, 2), [1, 1, N, 1]) # shape (batch_size, N, N, enc_size)
+            u = tf.concat([u1, u2], -1) # shape (batch_size, N, N, 2*enc_size)
+
+            # shape (batch_size, N, 2*enc_size, 2*enc_size)
+            W = tf.tile(tf.get_variable("W", [1, N, 2*enc_size, 2*enc_size]), [batch_size, 1, 1, 1])
+            
+            # shape (batch_size, N, N, 2*enc_size)
+            z = tf.tanh(tf.matmul(u, W))
+            z = tf.nn.dropout(z, keep_prob=self.keep_prob)
+
+            # shape (batch_size, N, 2*enc_size, 1)
+            V = tf.tile(tf.get_variable("V", [1, N, 2*enc_size, 1], dtype=tf.float32), [batch_size, 1, 1, 1])
+
+            S = tf.squeeze(tf.matmul(z, V), -1) # shape (batch_size, N, N)
+            a = tf.nn.softmax(S,2) # shape (batch_size, N, N)
+            c = tf.matmul(tf.transpose(a, perm=[0,2,1]), in_encodings) # shape (batch_size, N, enc_size)
+            
+            # TODO: another dropout here if needed?
+
+            attn_enc = tf.concat([in_encodings, c], -1] # shape (batch_size, N, 2*enc_size)
+
+            # shape (batch_size, 2*enc_size, 2*enc_size)
+            Wg = tf.tile(tf.get_variable("Wg", [1, 2*enc_size, 2*enc_size], tf.float32), [batch_size, 1, 1])
+
+            gate = tf.sigmoid(tf.matmul(attn_enc, Wg)) # shape (batch_size, N, 2*enc_size)
+            GRU_input = gate*attn_enc # shape (batch_size, N, 2*enc_size)
+            GRU_encoder = RNNEncoder(2*enc_size, keep_prob, "GRU")      # TODO: make this hidden size smaller if the model is too big
+            GRU_mask = tf.fill([batch_size, N], 1) # shape (batch_size, N)
+            h = GRU_encoder.build_graph(GRU_input, GRU_mask) # shape (batch_size, N, 4*enc_size)
+
+            # dropout is applied within the GRU
+            
+            return h
 
 
 class BasicAttn(object):
