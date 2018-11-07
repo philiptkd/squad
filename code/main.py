@@ -137,10 +137,10 @@ def main(unused_argv):
 
 
     #TESTING TODO: REMOVE THIS
-    coll = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
-    for item in coll:
-        print(item)
-    return
+    #coll = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+    #for item in coll:
+    #    print(item)
+    #return
     #END TESTING
 
 
