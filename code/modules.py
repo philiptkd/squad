@@ -265,12 +265,12 @@ class SelfAttn(object):
             
             # shape (batch_size, N, N, 2*enc_size)
             z = tf.tanh(tf.matmul(u, W))
-            z = tf.nn.dropout(z, keep_prob=self.keep_prob)
+            z_drop = tf.nn.dropout(z, keep_prob=self.keep_prob)
 
             # shape (batch_size, N, 2*enc_size, 1)
             V = tf.tile(tf.get_variable("V", [1, self.N, 2*self.enc_size, 1], dtype=tf.float32), [self.B, 1, 1, 1])
 
-            S = tf.squeeze(tf.matmul(z, V), -1) # shape (batch_size, N, N)
+            S = tf.squeeze(tf.matmul(z_drop, V), -1) # shape (batch_size, N, N)
             a = tf.nn.softmax(S,2) # shape (batch_size, N, N)
             c = tf.matmul(tf.transpose(a, perm=[0,2,1]), in_encodings) # shape (batch_size, N, enc_size)
             
@@ -283,9 +283,9 @@ class SelfAttn(object):
 
             gate = tf.sigmoid(tf.matmul(attn_enc, Wg)) # shape (batch_size, N, 2*enc_size)
             GRU_input = gate*attn_enc # shape (batch_size, N, 2*enc_size)
-            GRU_encoder = RNNEncoder(self.enc_size//2, self.keep_prob, "GRU")
+            GRU_encoder = RNNEncoder(self.enc_size, self.keep_prob, "GRU")
             GRU_mask = tf.fill([self.B, self.N], 1) # shape (batch_size, N)
-            h = GRU_encoder.build_graph(GRU_input, GRU_mask) # shape (batch_size, N, enc_size)
+            h = GRU_encoder.build_graph(GRU_input, GRU_mask) # shape (batch_size, N, enc_size*2)
 
             # dropout is applied within the GRU
             
