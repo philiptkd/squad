@@ -140,7 +140,6 @@ def main(unused_argv):
     coll = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
     for item in coll:
         print(item)
-
     return
     #END TESTING
 
