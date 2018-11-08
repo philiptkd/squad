@@ -144,7 +144,7 @@ class QAModel(object):
         down_sampled = tf.contrib.layers.fully_connected(blended_reps, num_outputs=self.FLAGS.hidden_size)
         ds_drop = tf.nn.dropout(down_sampled, keep_prob=self.keep_prob)
 
-        self_attn_layer = SelfAttn(self.keep_prob, self.FLAGS.batch_size, self.FLAGS.context_len, self.FLAGS.hidden_size)
+        self_attn_layer = SelfAttn(self.keep_prob, self.FLAGS.context_len, self.FLAGS.hidden_size)
         self_attn_output = self_attn_layer.build_graph(ds_drop) # shape (batch_size, context_len, hidden_size*2)
 
         # Note, tf.contrib.layers.fully_connected applies a ReLU non-linarity here by default

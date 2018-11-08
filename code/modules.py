@@ -246,14 +246,15 @@ class CoAttn(object):
             return u
 
 class SelfAttn(object):
-    def __init__(self, keep_prob, batch_size, num_keys, encoding_size):
+    def __init__(self, keep_prob, num_keys, encoding_size):
         self.keep_prob = keep_prob
         self.enc_size = encoding_size
         self.N = num_keys
-        self.B = batch_size
 
     def build_graph(self, in_encodings):    # in_encodings shape is (batch_size, N, enc_size)
         with vs.variable_scope("SelfAttn"):
+            self.B = tf.shape(in_encodings)[0]
+            
             # tile along different axes and then concatenate to get every possible combination of elements of original tensor
             # has the unfortunate downside of requiring a lot of memory
             u1 = tf.tile(tf.expand_dims(in_encodings, 1), [1, self.N, 1, 1]) # shape (batch_size, N, N, enc_size)
