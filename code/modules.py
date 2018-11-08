@@ -253,9 +253,9 @@ class SelfAttn(object):
 
     def build_graph(self, in_encodings):    # in_encodings shape is (batch_size, N, enc_size)
         with vs.variable_scope("SelfAttn"):
-            self.B = tf.shape(in_encodings)[0]
-            
-            # tile along different axes and then concatenate to get every possible combination of elements of original tensor
+	    self.B = tf.shape(in_encodings)[0]            
+
+	    # tile along different axes and then concatenate to get every possible combination of elements of original tensor
             # has the unfortunate downside of requiring a lot of memory
             u1 = tf.tile(tf.expand_dims(in_encodings, 1), [1, self.N, 1, 1]) # shape (batch_size, N, N, enc_size)
             u2 = tf.tile(tf.expand_dims(in_encodings, 2), [1, 1, self.N, 1]) # shape (batch_size, N, N, enc_size)
