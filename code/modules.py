@@ -144,18 +144,9 @@ class BiDAF(object):
             # unweighted similarity matrix. shape (batch_size, num_values, num_keys, 3*value_vec_size)
             unweighted = tf.concat([repeated_values, repeated_keys, repeated_values*repeated_keys], axis=3)
            
-            
-            #TODO: check if initialization of weights below is what caused this model to perform only as well as the baseline
-            # unfortunately, this will only make it slower. try to get a batch size greater than 30. only eval infrequently
-            # alternative (to have unique weights for every c,q pair?):
-            #   weights = tf.get_variable("weights", [1, num_values, 3*self.value_vec_size, 1], tf.float32)
-            #   weights = tf.tile(weights, [batch_size, 1, 1, 1])
-
-
-            # get weights of shape (batch_size, num_values, 3*value_vec_size, 1)
-            weights = tf.get_variable("weights", [1, 1, 3*self.value_vec_size, 1], tf.float32)
-            weights = tf.tile(weights, [batch_size, num_values, 1, 1])
-
+            # shape (batch_size, num_values, 3*value_vec_size, 1)
+            weights = tf.get_variable("weights", [1, num_values, 3*self.value_vec_size, 1], tf.float32)
+            weights = tf.tile(weights, [batch_size, 1, 1, 1])
 
             # multiply to get similarity matrix logits. shape (batch_size, num_values, num_keys)
             attn_logits = tf.squeeze(tf.matmul(unweighted, weights), -1)
@@ -179,7 +170,7 @@ class BiDAF(object):
             
 
             # Apply dropout
-            a_c2q = tf.nn.dropout(a_c2q, self.keep_prob)
+            a_c2q = tf.nn.dropout(a_c2q, self.keep_prob) # both shape (batch_size, num_keys, value_vec_size)
             a_q2c = tf.nn.dropout(a_q2c, self.keep_prob)
 
             return a_c2q, a_q2c
@@ -275,8 +266,6 @@ class SelfAttn(object):
             a = tf.nn.softmax(S,2) # shape (batch_size, N, N)
             c = tf.matmul(tf.transpose(a, perm=[0,2,1]), in_encodings) # shape (batch_size, N, enc_size)
             
-            # TODO: another dropout here if needed?
-
             attn_enc = tf.concat([in_encodings, c], -1) # shape (batch_size, N, 2*enc_size)
 
             # shape (batch_size, 2*enc_size, 2*enc_size)
