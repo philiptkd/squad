@@ -121,10 +121,11 @@ class SimpleSoftmaxLayer(object):
             return masked_logits, prob_dist
 
 class BiDAF(object):
-    def __init__(self, keep_prob, key_vec_size, value_vec_size):
+    def __init__(self, keep_prob, key_vec_size, value_vec_size, num_values):
         self.keep_prob = keep_prob
         self.key_vec_size = key_vec_size
         self.value_vec_size = value_vec_size
+	self.num_values = num_values
 
         """Inputs:
           values: Tensor shape (batch_size, num_values, value_vec_size).
@@ -145,7 +146,7 @@ class BiDAF(object):
             unweighted = tf.concat([repeated_values, repeated_keys, repeated_values*repeated_keys], axis=3)
            
             # shape (batch_size, num_values, 3*value_vec_size, 1)
-            weights = tf.get_variable("weights", [1, num_values, 3*self.value_vec_size, 1], tf.float32)
+            weights = tf.get_variable("weights", [1, self.num_values, 3*self.value_vec_size, 1], tf.float32)
             weights = tf.tile(weights, [batch_size, 1, 1, 1])
 
             # multiply to get similarity matrix logits. shape (batch_size, num_values, num_keys)

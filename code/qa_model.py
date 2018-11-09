@@ -135,13 +135,13 @@ class QAModel(object):
         question_hiddens = encoder.build_graph(self.qn_embs, self.qn_mask) # (batch_size, question_len, hidden_size*2)
 
         # bidirectional attention flow
-        attn_layer = BiDAF(self.keep_prob, self.FLAGS.hidden_size*2, self.FLAGS.hidden_size*2)
+        attn_layer = BiDAF(self.keep_prob, self.FLAGS.hidden_size*2, self.FLAGS.hidden_size*2, self.FLAGS.question_len)
         a, c_prime = attn_layer.build_graph(question_hiddens, self.qn_mask, context_hiddens) # both have shape (batch_size, context_len, hidden_size*2)
 
         blended_reps = tf.concat([context_hiddens, a, context_hiddens*a, context_hiddens*c_prime], axis=-1) # (batch_size, context_len, hidden_size*8)
         
         # blended_reps_final is shape (batch_size, context_len, hidden_size)
-        blended_reps_final = tf.contrib.layers.fully_connected(self_attn_output, num_outputs=self.FLAGS.hidden_size)
+        blended_reps_final = tf.contrib.layers.fully_connected(blended_reps, num_outputs=self.FLAGS.hidden_size)
         br_drop = tf.nn.dropout(blended_reps_final, keep_prob=self.keep_prob)
 
         # Use softmax layer to compute probability distribution for start location
