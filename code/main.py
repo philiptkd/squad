@@ -47,7 +47,7 @@ tf.app.flags.DEFINE_integer("num_epochs", 0, "Number of epochs to train. 0 means
 tf.app.flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 tf.app.flags.DEFINE_float("max_gradient_norm", 5.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("dropout", 0.15, "Fraction of units randomly dropped on non-recurrent connections.")
-tf.app.flags.DEFINE_integer("batch_size", 75, "Batch size to use")
+tf.app.flags.DEFINE_integer("batch_size", 1, "Batch size to use")
 tf.app.flags.DEFINE_integer("hidden_size", 200, "Size of the hidden states")
 tf.app.flags.DEFINE_integer("context_len", 300, "The maximum context length of your model")
 tf.app.flags.DEFINE_integer("question_len", 30, "The maximum question length of your model")
@@ -59,6 +59,8 @@ tf.app.flags.DEFINE_integer("word_len", 20, "The maximum number of characters pe
 char_vocab = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890,.?!;:'\"@#$%&()-"
 tf.app.flags.DEFINE_string("char_vocab", char_vocab, "The recognized characters in the model")
 tf.app.flags.DEFINE_integer("num_chars", len(char_vocab), "The number of recognized characters in the model")
+tf.app.flags.DEFINE_integer("num_filters", 100, "The output size of the last dimension of the 1D convolution")
+tf.app.flags.DEFINE_integer("kernel_size", 5, "The window size in characters to use for the 1D convolution")
 
 # How often to print, save, eval
 tf.app.flags.DEFINE_integer("print_every", 1, "How many iterations to do per print.")
