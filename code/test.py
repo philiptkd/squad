@@ -1,1 +1,1 @@
-print(len("abcd"))
+print([0]*(-4))
