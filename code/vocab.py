@@ -20,12 +20,33 @@ from __future__ import division
 
 from tqdm import tqdm
 import numpy as np
+import tensorflow as tf
 
 _PAD = b"<pad>"
 _UNK = b"<unk>"
 _START_VOCAB = [_PAD, _UNK]
 PAD_ID = 0
 UNK_ID = 1
+
+# returns mappings between characters and their IDs 
+def get_chars(char_embedding_size, char_vocab):
+    print "Initializing character embeddings"
+
+    char2id = {}
+    id2char = {}
+
+    # put start tokens in the dictionaries
+    idx = 0
+    for char in _START_VOCAB:
+        char2id[char] = idx
+        id2char[idx] = char
+        idx += 1
+    for char in char_vocab:
+        char2id[char] = idx
+        id2char[idx] = char
+        idx += 1
+
+    return char2id, id2char
 
 
 def get_glove(glove_path, glove_dim):

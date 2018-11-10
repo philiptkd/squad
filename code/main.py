@@ -26,7 +26,7 @@ import logging
 import tensorflow as tf
 
 from qa_model import QAModel
-from vocab import get_glove
+from vocab import get_glove, get_chars
 from official_eval_helper import get_json_data, generate_answers
 
 
@@ -52,6 +52,13 @@ tf.app.flags.DEFINE_integer("hidden_size", 200, "Size of the hidden states")
 tf.app.flags.DEFINE_integer("context_len", 300, "The maximum context length of your model")
 tf.app.flags.DEFINE_integer("question_len", 30, "The maximum question length of your model")
 tf.app.flags.DEFINE_integer("embedding_size", 100, "Size of the pretrained word vectors. This needs to be one of the available GloVe dimensions: 50/100/200/300")
+
+# character embedding hyperparameters
+tf.app.flags.DEFINE_integer("char_embedding_size", 20, "Size of learned character embeddings")
+tf.app.flags.DEFINE_integer("word_len", 20, "The maximum number of characters per word")
+char_vocab = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890,.?!;:'\"@#$%&()-"
+tf.app.flags.DEFINE_string("char_vocab", char_vocab, "The recognized characters in the model")
+tf.app.flags.DEFINE_integer("num_chars", len(char_vocab), "The number of recognized characters in the model")
 
 # How often to print, save, eval
 tf.app.flags.DEFINE_integer("print_every", 1, "How many iterations to do per print.")
@@ -123,6 +130,7 @@ def main(unused_argv):
 
     # Load embedding matrix and vocab mappings
     emb_matrix, word2id, id2word = get_glove(FLAGS.glove_path, FLAGS.embedding_size)
+    char2id, id2char = get_chars(FLAGS.char_embedding_size, FLAGS.char_vocab)
 
     # Get filepaths to train/dev datafiles for tokenized queries, contexts and answers
     train_context_path = os.path.join(FLAGS.data_dir, "train.context")
@@ -133,7 +141,7 @@ def main(unused_argv):
     dev_ans_path = os.path.join(FLAGS.data_dir, "dev.span")
 
     # Initialize model
-    qa_model = QAModel(FLAGS, id2word, word2id, emb_matrix)
+    qa_model = QAModel(FLAGS, id2word, word2id, emb_matrix, id2char, char2id)
 
 
     #TESTING TODO: REMOVE THIS

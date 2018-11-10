@@ -38,7 +38,7 @@ logging.basicConfig(level=logging.INFO)
 class QAModel(object):
     """Top-level Question Answering module"""
 
-    def __init__(self, FLAGS, id2word, word2id, emb_matrix):
+    def __init__(self, FLAGS, id2word, word2id, emb_matrix, id2char, char2id):
         """
         Initializes the QA model.
 
@@ -52,6 +52,8 @@ class QAModel(object):
         self.FLAGS = FLAGS
         self.id2word = id2word
         self.word2id = word2id
+        self.id2char = id2char
+        self.char2id = char2id
 
         # Add all parts of the graph
         with tf.variable_scope("QAModel", initializer=tf.contrib.layers.variance_scaling_initializer(factor=1.0, uniform=True)):
@@ -91,6 +93,12 @@ class QAModel(object):
         self.qn_ids = tf.placeholder(tf.int32, shape=[None, self.FLAGS.question_len])
         self.qn_mask = tf.placeholder(tf.int32, shape=[None, self.FLAGS.question_len])
         self.ans_span = tf.placeholder(tf.int32, shape=[None, 2])
+        
+        # placeholders for character-level embeddings
+        self.char_context_ids = tf.placeholder(tf.int32, shape=[None, self.FLAGS.context_len, self.FLAGS.word_len])
+        self.char_qn_ids = tf.placeholder(tf.int32, shape=[None, self.FLAGS.question_len, self.FLAGS.word_len])
+        self.context_word_mask = tf.placeholder(tf.int32, shape=[None, self.FLAGS.context_len, self.FLAGS.word_len])
+        self.qn_word_mask = tf.placeholder(tf.int32, shape=[None, self.FLAGS.question_len, self.FLAGS.word_len])
 
         # Add a placeholder to feed in the keep probability (for dropout).
         # This is necessary so that we can instruct the model to use dropout when training, but not when testing
@@ -114,6 +122,17 @@ class QAModel(object):
             # using the placeholders self.context_ids and self.qn_ids
             self.context_embs = embedding_ops.embedding_lookup(embedding_matrix, self.context_ids) # shape (batch_size, context_len, embedding_size)
             self.qn_embs = embedding_ops.embedding_lookup(embedding_matrix, self.qn_ids) # shape (batch_size, question_len, embedding_size)
+
+
+            # character-level embeddings. trainable.
+            # shape (num_chars, char_embedding_size)
+            char_embedding_matrix = tf.get_variable("char_emb_matrix", [self.FLAGS.num_chars, self.FLAGS.char_embedding_size], tf.float32)
+            
+            # (batch_size, context_len, word_len, char_embedding_size)
+            self.char_context_embs = embedding_ops.embedding_lookup(char_embedding_matrix, self.char_context_ids)
+
+            # (batch_size, question_len, word_len, char_embedding_size)
+            self.char_qn_embs = embedding_ops.embedding_lookup(char_embedding_matrix, self.char_qn_ids)
 
 
     def build_graph(self):
