@@ -325,7 +325,6 @@ class QAModel(object):
         [probdist_start, probdist_end] = session.run(output_feed, input_feed)
         return probdist_start, probdist_end
 
-
     def get_start_end_pos(self, session, batch):
         """
         Run forward-pass only; get the most likely answer span.

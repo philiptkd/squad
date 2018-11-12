@@ -161,6 +161,7 @@ def refill_batches(batches, word2id, char2id, context_file, qn_file, ans_file, b
                 continue
             else: # truncate
                 qn_ids = qn_ids[:question_len]
+                char_qn_ids = char_qn_ids[:question_len]
 
         # discard or truncate too-long contexts
         if len(context_ids) > context_len:
@@ -168,6 +169,7 @@ def refill_batches(batches, word2id, char2id, context_file, qn_file, ans_file, b
                 continue
             else: # truncate
                 context_ids = context_ids[:context_len]
+                char_context_ids = char_context_ids[:context_len]
 
         # truncate too-long words
         char_context_ids = [word[:word_len] for word in char_context_ids]
@@ -249,7 +251,7 @@ def get_batch_generator(word2id, char2id, context_path, qn_path, ans_path, batch
         context_mask = (context_ids != PAD_ID).astype(np.int32) # shape (batch_size, context_len)
 
         # Make char_context_ids into a np array and create char_context_mask
-        char_context_ids = np.array(char_context_ids) # shape (batch_size, context_len)
+        char_context_ids = np.array(char_context_ids) # shape (batch_size, context_len, word_len)
         char_context_mask = (char_context_ids != PAD_ID).astype(np.int32) # shape (batch_size, context_len, word_len)
 
         # Make ans_span into a np array
