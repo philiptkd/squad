@@ -147,17 +147,21 @@ class QAModel(object):
         """
         # character-level CNN to get hybrid word embeddings
         charCnn = CharCNN(self.FLAGS.word_len, self.FLAGS.char_embedding_size, self.FLAGS.num_filters, self.FLAGS.kernel_size)
+        # (batch_size, context_len, num_filters)
         char_context_hiddens = charCnn.build_graph(self.char_context_embs, self.char_context_mask, self.FLAGS.context_len)
+        # (batch_size, question_len, num_filters)
         char_qn_hiddens = charCnn.build_graph(self.char_qn_embs, self.char_qn_mask, self.FLAGS.question_len) 
 
-        # WORKING HERE
+        # hybrid word embeddings
+        hybrid_context_embs = tf.concat([self.context_embs, char_context_hiddens], axis=-1) # (batch_size, context_len, emb_size+char_emb_size)
+        hybrid_qn_embs = tf.concat([self.qn_embs, char_qn_hiddens], axis=-1) # (batch_size, question_len, emb_size+char_emb_size)
 
         # Use a RNN to get hidden states for the context and the question
         # Note: here the RNNEncoder is shared (i.e. the weights are the same)
         # between the context and the question.
         encoder = RNNEncoder(self.FLAGS.hidden_size, self.keep_prob, "GRU")
-        context_hiddens = encoder.build_graph(self.context_embs, self.context_mask) # (batch_size, context_len, hidden_size*2)
-        question_hiddens = encoder.build_graph(self.qn_embs, self.qn_mask) # (batch_size, question_len, hidden_size*2)
+        context_hiddens = encoder.build_graph(hybrid_context_embs, self.context_mask) # (batch_size, context_len, hidden_size*2)
+        question_hiddens = encoder.build_graph(hybrid_qn_embs, self.qn_mask) # (batch_size, question_len, hidden_size*2)
 
         # coattention has been the best attention model I've found
         attn_layer = CoAttn(self.keep_prob, self.FLAGS.hidden_size*2, self.FLAGS.hidden_size*2)

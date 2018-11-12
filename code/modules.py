@@ -37,16 +37,24 @@ class CharCNN(object):
                 shape (batch_size, passage_len, word_len)
             passage_len: either context_len or question_len
         """
+        # make mask the same shape as the embeddings
+        big_mask = tf.tile(tf.expand_dims(char_mask, 3), [1, 1, 1, self.char_emb_size])
+        in_masked = char_embs*big_mask # mask
+
         # reshape so characters of adjacent words don't get convolved together
-        reshaped = tf.reshape(char_embs, [-1, self.word_len, self.char_emb_size]) # (batch_size*passage_len, word_len, char_emb_size)
+        in_reshaped = tf.reshape(in_masked, [-1, self.word_len, self.char_emb_size]) # (batch_size*passage_len, word_len, char_emb_size)
         
         # (batch_size*passage_len, word_len, num_filters)
-        out_reshaped = tf.layers.conv1d(reshaped, self.num_filters, self.kernel_size, strides=1, \
+        activations = tf.layers.conv1d(in_reshaped, self.num_filters, self.kernel_size, strides=1, \
                 padding='same', activation=tf.nn.relu)
         
-        # (batch_size, context_len, word_len, num_filters)
-        out = tf.reshape(out_reshaped, [-1, passage_len, self.word_len, self.num_filters])
-        return out
+        # (batch_size, passage_len, word_len, num_filters)
+        out = tf.reshape(activations, [-1, passage_len, self.word_len, self.num_filters])
+       
+        # (batch_size, passage_len, num_filters)
+        pooled = tf.reduce_max(out, axis=2)
+
+        return pooled
 
 class RNNEncoder(object):
     """
