@@ -20,6 +20,34 @@ from tensorflow.python.ops import variable_scope as vs
 from tensorflow.python.ops import rnn_cell
 
 
+class CharCNN(object):
+
+    def __init__(word_len, char_embedding_size, num_filters, kernel_size)
+        self.word_len = word_len
+        self.char_emb_size = char_embedding_size
+        self.num_filters = num_filters
+        self.kernel_size = kernel_size
+
+    def build_graph(char_embs, char_mask, passage_len):
+        """
+        Inputs:
+            char_embs: either char_context_embeddings or char_qn_embeddings
+                shape (batch_size, passage_len, word_len, char_emb_size)
+            char_mask: either char_context_mask or char_qn_mask
+                shape (batch_size, passage_len, word_len)
+            passage_len: either context_len or question_len
+        """
+        # reshape so characters of adjacent words don't get convolved together
+        reshaped = tf.reshape(char_embs, [-1, self.word_len, self.char_emb_size]) # (batch_size*passage_len, word_len, char_emb_size)
+        
+        # (batch_size*passage_len, word_len, num_filters)
+        out_reshaped = tf.layers.conv1d(reshaped, self.num_filters, self.kernel_size, strides=1, \
+                padding='same', activation=tf.nn.relu)
+        
+        # (batch_size, context_len, word_len, num_filters)
+        out = tf.reshape(out_reshaped, [-1, passage_len, self.word_len, self.num_filters])
+        return out
+
 class RNNEncoder(object):
     """
     General-purpose module to encode a sequence using a RNN.
@@ -188,7 +216,7 @@ class CoAttn(object):
         self.key_vec_size = key_vec_size
         self.value_vec_size = value_vec_size
 
-    def build_graph(self, values, values_mask, keys):
+    def build_graph(self, values, values_mask, keys, keys_mask):
         with vs.variable_scope("CoAttn"):
             batch_size = tf.shape(values)[0]
             num_values = tf.shape(values)[1]
@@ -203,24 +231,28 @@ class CoAttn(object):
             c0 = tf.tile(c0, [batch_size, 1, 1]) # to share weights between examples in the batch
             q0 = tf.tile(q0, [batch_size, 1, 1])
 
-            c = tf.concat([keys, c0], axis=1) # shape (batch_size, num_keys + 1, value_vec_size)
-            q_prime = tf.concat([q_prime, q0], axis=1) # shape (batch_size, num_values + 1, value_vec_size)
+            c = tf.concat([keys, c0], axis=1) # shape (batch_size, num_keys+1, value_vec_size)
+            q_prime = tf.concat([q_prime, q0], axis=1) # shape (batch_size, num_values+1, value_vec_size)
 
             # create affinity matrix
-            L = tf.matmul(c, tf.transpose(q_prime, perm=[0,2,1])) # shape (batch_size, num_keys + 1, num_values + 1)
+            L = tf.matmul(c, tf.transpose(q_prime, perm=[0,2,1])) # shape (batch_size, num_keys+1, num_values+1)
             
-            # create mask for affinity matrix
-            L_mask = tf.fill([batch_size, 1], 1) # creates tensor of 1s with shape (batch_size, 1)
-            L_mask = tf.concat([values_mask, L_mask], 1) # shape (batch_size, num_values + 1)
-            L_mask = tf.expand_dims(L_mask, axis=1) # shape (batch_size, 1, num_values + 1)
+            # create value for affinity matrix
+            L_value_mask = tf.fill([batch_size, 1], 1) # creates tensor of 1s with shape (batch_size, 1)
+            L_value_mask = tf.concat([values_mask, L_value_mask], 1) # shape (batch_size, num_values+1)
+            L_value_mask = tf.expand_dims(L_value_mask, axis=1) # shape (batch_size, 1, num_values+1)
 
+            # create key mask for affinity matrix
+            L_key_mask = tf.fill([batch_size, 1]) # ones with shape (batch_size, 1)
+            L_key_mask = tf.concat([keys_mask, L_key_mask], 1) # shape (batch_size, num_keys+1)
+            L_key_mask = tf.expand_dims(L_key_mask, axis=2) # shape (batch_size, num_keys+1, 1)
 
             # get c2q attention (for a given context word, how similar is each question word)
-            _, alpha = masked_softmax(L, L_mask, -1) # shape (batch_size, num_keys+1, num_values+1)
+            _, alpha = masked_softmax(L, L_value_mask, -1) # shape (batch_size, num_keys+1, num_values+1)
             a = tf.matmul(alpha, q_prime) # shape (batch_size, num_keys+1, value_vec_size)
 
             # get q2c attention (for a given question word, how similar is each context word)
-            _, beta = masked_softmax(L, L_mask, 1) # shape(batch_size, num_keys+1, num_values+1)
+            _, beta = masked_softmax(L, L_key_mask, 1) # shape(batch_size, num_keys+1, num_values+1)
             b =  tf.matmul(tf.transpose(beta, perm=[0,2,1]), c) # shape (batch_size, num_values+1, value_vec_size)
 
             # second-level attention
