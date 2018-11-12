@@ -216,7 +216,7 @@ class CoAttn(object):
         self.key_vec_size = key_vec_size
         self.value_vec_size = value_vec_size
 
-    def build_graph(self, values, values_mask, keys, keys_mask):
+    def build_graph(self, values, values_mask, keys):
         with vs.variable_scope("CoAttn"):
             batch_size = tf.shape(values)[0]
             num_values = tf.shape(values)[1]
@@ -238,21 +238,16 @@ class CoAttn(object):
             L = tf.matmul(c, tf.transpose(q_prime, perm=[0,2,1])) # shape (batch_size, num_keys+1, num_values+1)
             
             # create value for affinity matrix
-            L_value_mask = tf.fill([batch_size, 1], 1) # creates tensor of 1s with shape (batch_size, 1)
-            L_value_mask = tf.concat([values_mask, L_value_mask], 1) # shape (batch_size, num_values+1)
-            L_value_mask = tf.expand_dims(L_value_mask, axis=1) # shape (batch_size, 1, num_values+1)
-
-            # create key mask for affinity matrix
-            L_key_mask = tf.fill([batch_size, 1]) # ones with shape (batch_size, 1)
-            L_key_mask = tf.concat([keys_mask, L_key_mask], 1) # shape (batch_size, num_keys+1)
-            L_key_mask = tf.expand_dims(L_key_mask, axis=2) # shape (batch_size, num_keys+1, 1)
+            L_mask = tf.fill([batch_size, 1], 1) # creates tensor of 1s with shape (batch_size, 1)
+            L_mask = tf.concat([values_mask, L_mask], 1) # shape (batch_size, num_values+1)
+            L_mask = tf.expand_dims(L_mask, axis=1) # shape (batch_size, 1, num_values+1)
 
             # get c2q attention (for a given context word, how similar is each question word)
-            _, alpha = masked_softmax(L, L_value_mask, -1) # shape (batch_size, num_keys+1, num_values+1)
+            _, alpha = masked_softmax(L, L_mask, -1) # shape (batch_size, num_keys+1, num_values+1)
             a = tf.matmul(alpha, q_prime) # shape (batch_size, num_keys+1, value_vec_size)
 
             # get q2c attention (for a given question word, how similar is each context word)
-            _, beta = masked_softmax(L, L_key_mask, 1) # shape(batch_size, num_keys+1, num_values+1)
+            _, beta = masked_softmax(L, L_mask, 1) # shape(batch_size, num_keys+1, num_values+1)
             b =  tf.matmul(tf.transpose(beta, perm=[0,2,1]), c) # shape (batch_size, num_values+1, value_vec_size)
 
             # second-level attention
