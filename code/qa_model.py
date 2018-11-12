@@ -126,7 +126,7 @@ class QAModel(object):
 
             # character-level embeddings. trainable.
             # shape (num_chars, char_embedding_size)
-            char_embedding_matrix = tf.get_variable("char_emb_matrix", [self.FLAGS.num_chars, self.FLAGS.char_embedding_size], tf.float32)
+            char_embedding_matrix = tf.get_variable("char_emb_matrix", [self.FLAGS.num_chars+2, self.FLAGS.char_embedding_size], tf.float32)
             
             # (batch_size, context_len, word_len, char_embedding_size)
             self.char_context_embs = embedding_ops.embedding_lookup(char_embedding_matrix, self.char_context_ids)
@@ -322,9 +322,8 @@ class QAModel(object):
         input_feed[self.char_qn_mask] = batch.char_qn_mask
 
         output_feed = [self.probdist_start, self.probdist_end]
-        print(session.run(output_feed, input_feed))
-        #[probdist_start, probdist_end] = ret 
-        #return probdist_start, probdist_end
+        [probdist_start, probdist_end] = session.run(output_feed, input_feed)
+        return probdist_start, probdist_end
 
 
     def get_start_end_pos(self, session, batch):
@@ -377,6 +376,7 @@ class QAModel(object):
             loss_per_batch.append(loss * curr_batch_size)
             batch_lengths.append(curr_batch_size)
 
+
         # Calculate average loss
         total_num_examples = sum(batch_lengths)
         toc = time.time()
@@ -425,7 +425,6 @@ class QAModel(object):
         # Note here we select discard_long=False because we want to sample from the entire dataset
         # That means we're truncating, rather than discarding, examples with too-long context or questions
         for batch in get_batch_generator(self.word2id, self.char2id, context_path, qn_path, ans_path, self.FLAGS.batch_size, context_len=self.FLAGS.context_len, question_len=self.FLAGS.question_len, word_len=self.FLAGS.word_len, discard_long=False):
-
             pred_start_pos, pred_end_pos = self.get_start_end_pos(session, batch)
 
             # Convert the start and end positions to lists length batch_size

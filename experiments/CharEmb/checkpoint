@@ -1,2 +1,0 @@
-model_checkpoint_path: "qa.ckpt-750"
-all_model_checkpoint_paths: "qa.ckpt-750"
