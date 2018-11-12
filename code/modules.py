@@ -22,13 +22,13 @@ from tensorflow.python.ops import rnn_cell
 
 class CharCNN(object):
 
-    def __init__(word_len, char_embedding_size, num_filters, kernel_size)
+    def __init__(self, word_len, char_embedding_size, num_filters, kernel_size):
         self.word_len = word_len
         self.char_emb_size = char_embedding_size
         self.num_filters = num_filters
         self.kernel_size = kernel_size
 
-    def build_graph(char_embs, char_mask, passage_len):
+    def build_graph(self, char_embs, char_mask, passage_len):
         """
         Inputs:
             char_embs: either char_context_embeddings or char_qn_embeddings
@@ -39,7 +39,7 @@ class CharCNN(object):
         """
         # make mask the same shape as the embeddings
         big_mask = tf.tile(tf.expand_dims(char_mask, 3), [1, 1, 1, self.char_emb_size])
-        in_masked = char_embs*big_mask # mask
+        in_masked = char_embs*tf.cast(big_mask, tf.float32) # mask
 
         # reshape so characters of adjacent words don't get convolved together
         in_reshaped = tf.reshape(in_masked, [-1, self.word_len, self.char_emb_size]) # (batch_size*passage_len, word_len, char_emb_size)
